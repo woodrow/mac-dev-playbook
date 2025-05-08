@@ -42,6 +42,27 @@
     - import_tasks: tasks/extra-packages.yml
       tags: ['extra-packages']
 
+    - name: check for SSH agent to be available and have a key loaded
+      command: "ssh-add -L"
+      register: ssh_check
+      failed_when: ssh_check.rc > 0
+      changed_when: ssh_check.rc != 0
+
+    - name: Install homesick repositories
+      git:
+        repo: "{{ item.value }}"
+        dest: "{{ ansible_user_dir }}/.homesick/repos/{{ item.key }}"
+        accept_hostkey: true
+      with_dict: "{{ homesick_repos }}"
+      loop_control:
+        label: "{{ item.key }} -> {{ item.value }}"
+
+    - name: Link homeshick repositories with homeshick
+      command:
+        argv: ["/opt/homebrew/bin/homeshick", "link", "{{ item.key }}"]
+      with_dict: "{{ homesick_repos }}"
+      register: homeshick_link
+      changed_when: homeshick_link.stdout_lines | length > 0
 
     - name: Run post-provision task files in a block.
       tags: ['post']
